@@ -586,6 +586,49 @@ const projects: Project[] = [
       );
     },
   },
+  {
+    id: "inventraph",
+    category: "Web Application",
+    title: "Inventraph",
+    src: "/assets/projects-screenshots/inventra/inventra-preview.png",
+    screenshots: ["dashboard.png", "analytics.png", "interface.png"],
+    skills: {
+      frontend: [
+        PROJECT_SKILLS.html,
+        PROJECT_SKILLS.css,
+        PROJECT_SKILLS.javascript,
+        PROJECT_SKILLS.bootstrap,
+      ],
+      backend: [
+        PROJECT_SKILLS.php,
+        PROJECT_SKILLS.mysql,
+      ],
+    },
+    live: "https://inventraph.vercel.app/",
+    get content() {
+      return (
+        <div>
+          <TypographyP className="font-mono text-2xl text-center">
+            Modern Web Application with Interactive Interface
+          </TypographyP>
+          <TypographyP className="font-mono">
+            Inventraph is a dynamic web application built with modern frontend technologies 
+            and deployed on Vercel. The application features an intuitive user interface 
+            with responsive design and interactive elements for enhanced user experience.
+          </TypographyP>
+          <ProjectsLinks live={this.live} />
+          <TypographyH3 className="my-4 mt-8">Key Features</TypographyH3>
+          <ul className="font-mono mb-4 list-disc pl-6">
+            <li>Responsive and modern user interface</li>
+            <li>Interactive data visualization</li>
+            <li>Optimized performance and loading</li>
+            <li>Clean and intuitive design</li>
+            <li>Cross-platform compatibility</li>
+          </ul>
+        </div>
+      );
+    },
+  },
 ];
 
 export default projects;
