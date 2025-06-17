@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "./ui/use-toast";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
+import emailjs from '@emailjs/browser';
 
 const ContactForm = () => {
   const [fullName, setFullName] = React.useState("");
@@ -18,49 +19,115 @@ const ContactForm = () => {
   const { toast } = useToast();
   const router = useRouter();
 
+  // EmailJS configuration - Using your provided credentials
+  const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || 'service_8ufxiis';
+  const TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || 'template_s4hu6mc'; // For receiving messages TO you
+  const AUTO_REPLY_TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_AUTO_REPLY_TEMPLATE_ID || 'template_nh5mvkl'; // For auto-reply TO user  
+  const PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || '__e27zb22t71DSt_3';
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      const res = await fetch("/api/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fullName,
-          email,
-          message,
-        }),
+      // Initialize EmailJS with public key
+      emailjs.init(PUBLIC_KEY);
+
+      // Debug: Log the configuration being used
+      console.log('EmailJS Configuration:', {
+        SERVICE_ID,
+        TEMPLATE_ID,
+        AUTO_REPLY_TEMPLATE_ID,
+        PUBLIC_KEY: PUBLIC_KEY.substring(0, 5) + '...' // Only show first 5 chars for security
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+
+      // Send the main contact email TO YOU (Charlie) with the user's message
+      const mainEmailResult = await emailjs.send(
+        SERVICE_ID,
+        TEMPLATE_ID,
+        {
+          // This should be a template that sends the user's message TO your email
+          to_name: 'Charlie Pelle',
+          to_email: 'charliepelle5@gmail.com',
+          from_name: fullName,
+          from_email: email,
+          user_name: fullName,
+          user_email: email,
+          message: message,
+          subject: `New Contact Form Message from ${fullName}`,
+        }
+      );
+
+      console.log('Main email sent:', mainEmailResult);
+
+      // Try to send auto-reply email (skip if it fails)
+      try {
+        const autoReplyResult = await emailjs.send(
+          SERVICE_ID,
+          AUTO_REPLY_TEMPLATE_ID,
+          {
+            // Auto-reply template variables (using your template format)
+            name: fullName,
+            title: message,
+            to_name: fullName,
+            to_email: email,
+            from_name: 'Charlie Pelle',
+            from_email: 'charliepelle5@gmail.com',
+            subject: 'Thank you for your message!',
+          }
+        );
+        console.log('Auto-reply sent:', autoReplyResult);
+      } catch (autoReplyError) {
+        console.warn('Auto-reply failed (not critical):', autoReplyError);
+      }
+
       toast({
-        title: "Thank you!",
-        description: "I'll get back to you as soon as possible.",
+        title: "Message sent successfully!",
+        description: "Thank you for your message. You should receive a confirmation email shortly, and I'll get back to you as soon as possible.",
         variant: "default",
         className: cn("top-0 mx-auto flex fixed md:top-4 md:right-4"),
       });
-      setLoading(false);
+
+      // Clear form
       setFullName("");
       setEmail("");
       setMessage("");
+
+      // Optional: redirect after success
       const timer = setTimeout(() => {
         router.push("/");
         clearTimeout(timer);
-      }, 1000);
-    } catch (err) {
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('EmailJS error:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Something went wrong while sending your message. Please try again or contact me directly at charliepelle5@gmail.com";
+      
+      if (error.status === 400) {
+        if (error.text?.includes('template ID not found')) {
+          errorMessage = "Email template configuration error. Please contact me directly at charliepelle5@gmail.com";
+        } else if (error.text?.includes('service ID not found')) {
+          errorMessage = "Email service configuration error. Please contact me directly at charliepelle5@gmail.com";
+        }
+      } else if (error.status === 401) {
+        errorMessage = "Email authentication error. Please contact me directly at charliepelle5@gmail.com";
+      }
+      
       toast({
-        title: "Error",
-        description: "Something went wrong! Please check the fields.",
+        title: "Error sending message",
+        description: errorMessage,
         className: cn(
           "top-0 w-full flex justify-center fixed md:max-w-7xl md:top-4 md:right-4"
         ),
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
   return (
     <form className="min-w-7xl mx-auto sm:mt-4" onSubmit={handleSubmit}>
       <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 mb-4">
@@ -90,14 +157,14 @@ const ContactForm = () => {
       <div className="grid w-full gap-1.5 mb-4">
         <Label htmlFor="content">Your Message</Label>
         <Textarea
-          placeholder="Tell me about about your project,"
+          placeholder="Tell me about your project..."
           id="content"
           required
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
         <p className="text-sm text-muted-foreground">
-          I&apos;ll never share your data with anyone else. Pinky promise!
+          I&apos;ll never share your data with anyone else. You&apos;ll receive an automatic confirmation email.
         </p>
       </div>
       <Button
@@ -108,7 +175,7 @@ const ContactForm = () => {
         {loading ? (
           <div className="flex items-center justify-center">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            <p>Please wait</p>
+            <p>Sending message...</p>
           </div>
         ) : (
           <div className="flex items-center justify-center">
